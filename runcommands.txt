@@ -1,0 +1,3 @@
+run api
+C:\Users\Sumanth Kotla\Documents\client-followup-ai>uvicorn backend.app.main:app --reload
+
