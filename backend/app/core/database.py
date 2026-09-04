@@ -6,7 +6,7 @@ engine = create_engine(settings.database_url, echo=True)
 
 
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-SessionLocal = sessionmaker(binf=engine, autoflush=False, autocommit=False)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 class Base(DeclarativeBase):
     pass

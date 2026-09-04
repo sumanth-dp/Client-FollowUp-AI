@@ -5,5 +5,7 @@ pydantic
 pydantic-settings
 sqlalchemy
 pymysql
+
 alembic
 
+email-validator
