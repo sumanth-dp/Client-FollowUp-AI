@@ -30,3 +30,14 @@ class ClientResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+# for client update
+class ClientUpdate(BaseModel):
+    name: str | None = None
+    company: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    whatsapp: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    assigned_user_id: int | None = None
