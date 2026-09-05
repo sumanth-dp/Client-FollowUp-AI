@@ -8,6 +8,7 @@ from alembic import context
 from backend.app.core.config import settings
 from backend.app.core.database import Base
 from backend.app.models.client import Client
+from backend.app.models.follow_up import FollowUp
 
 
 # this is the Alembic Config object, which provides
