@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.database import Base
-
+from sqlalchemy.orm import relationship
 
 class Client(Base):
     __tablename__ = "clients"
@@ -59,4 +59,10 @@ class Client(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False
+    )
+
+    follow_ups = relationship(
+    "FollowUp",
+    back_populates="client",
+    cascade="all, delete-orphan",
     )

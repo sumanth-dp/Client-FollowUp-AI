@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url : str
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    redis_url: str = "redis://localhost:6379/0"
     # model_config = SettingsConfigDict(env_file="client-followup-ai/.env", extra="ignore")
     # model_config = SettingsConfigDict(
     #     env_file=BASE_DIR / ".env",

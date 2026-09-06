@@ -111,6 +111,31 @@ def trigger_due_follow_ups(
         "processed": processed,
     }
     
+from backend.app.services.queue_service import enqueue_follow_up
+
+@router.post("/{follow_up_id}/queue")
+def queue_follow_up(
+    follow_up_id: int,
+    db: Session = Depends(get_db),
+    ):
+    follow_up = db.get(FollowUp, follow_up_id)
+
+    
+    if follow_up is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Follow-up not found",
+        )
+
+    enqueue_follow_up(follow_up.id)
+
+    return {
+        "message": "Follow-up added to queue",
+        "follow_up_id": follow_up.id,
+    }
+
+
+
 
 
 

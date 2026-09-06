@@ -87,3 +87,16 @@ def db_health():
     return {
         "database": result.scalar()
     }
+
+
+from backend.app.core.redis import redis_client
+
+@app.get("/redis-test")
+def redis_test():
+    redis_client.set("test_key", "hello")
+
+    value = redis_client.get("test_key")
+
+    return {
+        "redis": value
+    }

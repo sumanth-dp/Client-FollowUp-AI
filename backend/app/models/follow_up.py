@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.database import Base
-
+from sqlalchemy.orm import relationship
 
 class FollowUp(Base):
     __tablename__ = "follow_ups"
@@ -73,3 +73,37 @@ class FollowUp(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+    max_attempts: Mapped[int] = mapped_column(
+    Integer,
+    default=3,
+    nullable=False,
+    )
+
+    last_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    next_retry_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    processing_started_at: Mapped[datetime | None] = mapped_column(
+    DateTime,
+    nullable=True,
+    )
+
+    executions = relationship(
+    "FollowUpExecution",
+    back_populates="follow_up",
+    cascade="all, delete-orphan",
+    )
+
+    client = relationship("Client", back_populates="follow_ups")
+    executions = relationship(
+    "FollowUpExecution",
+    back_populates="follow_up",
+    cascade="all, delete-orphan",
+)
