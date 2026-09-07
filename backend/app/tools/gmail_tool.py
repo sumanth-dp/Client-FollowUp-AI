@@ -80,7 +80,30 @@ def send_email(
         },
     ).execute()
 
-    return result
+    return result["id"]
+
+
+
+# @tool
+# def send_follow_up_email(
+#     to: str,
+#     subject: str,
+#     body: str,
+# ) -> str:
+#     """
+#     Send a client follow-up email using Gmail
+#     and return the Gmail message ID.
+#     """
+
+#     result = send_email(
+#         to=to,
+#         subject=subject,
+#         body=body,
+#     )
+
+#     return result["id"]
+
+
 
 @tool
 def send_follow_up_email(
@@ -92,10 +115,10 @@ def send_follow_up_email(
     Send a client follow-up email using Gmail.
     """
 
-    send_email(
+    provider_reference = send_email(
         to=to,
         subject=subject,
         body=body,
     )
 
-    return f"Email successfully sent to {to}"
+    return provider_reference

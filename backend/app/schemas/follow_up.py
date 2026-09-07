@@ -34,3 +34,15 @@ class FollowUpResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+
+class FollowUpExecutionResponse(BaseModel):
+    id: int
+    attempt_number: int
+    channel: str
+    status: str
+    provider_reference: str | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    error_message: str | None

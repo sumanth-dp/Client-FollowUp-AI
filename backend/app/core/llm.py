@@ -28,11 +28,36 @@
 
 #     return response.text
 
+# import os
+
+# from dotenv import load_dotenv
+# from langchain_google_genai import ChatGoogleGenerativeAI
+
+
+# load_dotenv()
+
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# if not GEMINI_API_KEY:
+#     raise RuntimeError(
+#         "GEMINI_API_KEY environment variable is not set"
+#     )
+
+
+# llm = ChatGoogleGenerativeAI(
+#     model="gemini-2.5-flash",
+#     temperature=0.3,
+#     max_retries=2,
+#     google_api_key=GEMINI_API_KEY,
+# )
+
+# llm.py
+
 import os
 
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from langchain_groq import ChatGroq
 
 load_dotenv()
 
@@ -44,9 +69,26 @@ if not GEMINI_API_KEY:
     )
 
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+if not GROQ_API_KEY:
+    raise RuntimeError(
+        "GROQ_API_KEY environment variable is not set"
+    )
+
+
+gemini_llm = ChatGoogleGenerativeAI(
+    model="gemini-3.5-flash",
     temperature=0.3,
     max_retries=2,
-    google_api_key=GEMINI_API_KEY,
+    google_api_key=os.getenv("GEMINI_API_KEY"),
 )
+
+groq_llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    temperature=0.3,
+    max_retries=2,
+    api_key=os.getenv("GROQ_API_KEY"),
+)
+
+llm = gemini_llm.with_fallbacks([groq_llm])

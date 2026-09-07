@@ -6,53 +6,9 @@ from backend.app.models.follow_up import FollowUp
 from backend.app.models.client import Client
 from backend.app.triggers.engine import execute_trigger
 from backend.app.models.follow_up_execution import FollowUpExecution
-
+from backend.app.agents.follow_up_agent import follow_up_agent
 
 QUEUE_NAME = "follow_up_queue"
-
-# def process_job(job: dict):
-#     follow_up_id = job["follow_up_id"]
-
-    
-#     db = SessionLocal()
-
-#     try:
-#         follow_up = db.get(FollowUp, follow_up_id)
-
-#         if follow_up is None:
-#             print(f"Follow-up {follow_up_id} not found")
-#             return
-
-#         print(
-#             f"Processing follow-up {follow_up.id} "
-#             f"for client {follow_up.client_id}"
-#         )
-
-#         # Temporary execution logic.
-#         # Later this will call Email/WhatsApp/Call providers.
-
-#         # follow_up.status = "completed"
-
-#         # db.commit()
-#         success = execute_trigger(follow_up)
-
-#         if success:
-#             follow_up.status = "completed"
-#         else:
-#             follow_up.status = "failed"
-
-#         db.commit()
-
-#         print(
-#             f"Follow-up {follow_up.id} completed successfully"
-#         )
-
-#     except Exception as e:
-#         db.rollback()
-#         print(f"Error processing follow-up: {e}")
-
-#     finally:
-#         db.close()
 
 from datetime import datetime, timedelta, timezone
 
@@ -82,15 +38,6 @@ def process_job(job: dict):
         # Count this execution attempt
         follow_up.attempt_count += 1
 
-        # Create execution history record
-        # execution = FollowUpExecution(
-        #     follow_up_id=follow_up.id,
-        #     attempt_number=follow_up.attempt_count,
-        #     channel=follow_up.type,
-        #     status="processing",
-        #     started_at=datetime.now(timezone.utc),
-        #     created_at=datetime.now(timezone.utc),
-        # )
         now = datetime.now(timezone.utc)
 
         execution = FollowUpExecution(
@@ -127,14 +74,34 @@ def process_job(job: dict):
         # db.flush()
 
         try:
-            provider_reference = execute_trigger(follow_up)
-            print(
-                f"[WORKER] Provider reference: {provider_reference}"
+            result = follow_up_agent.invoke(
+                {
+                    "follow_up_id": follow_up.id,
+                    "client_name": follow_up.client.name,
+                    "client_email": follow_up.client.email,
+                    "purpose": "Follow up with the client based on the provided notes.",
+                    "notes": follow_up.notes,
+                    "action": "",
+                    "email_subject": "",
+                    "email_body": "",
+                    "provider_reference": None,
+                    "success": False,
+                    "error": None,
+                    "messages": [],
+                }
             )
+
+            print(
+                f"[WORKER] Agent result: {result}"
+            )
+
+            provider_reference = result.get("provider_reference")
+            success = result.get("success", False)
+            error = result.get("error")
             # if provider_reference:
             #     execution.provider_reference = provider_reference
 
-            if provider_reference:
+            if success and provider_reference:
                 execution.provider_reference = provider_reference
                 follow_up.status = "completed"
                 follow_up.completed_at = datetime.now(timezone.utc)
@@ -163,6 +130,9 @@ def process_job(job: dict):
 
         except Exception as e:
             follow_up.last_error = str(e)
+            print(
+                f"[WORKER ERROR] {type(e).__name__}: {e}"
+            )
             execution.status = "failed"
             execution.completed_at = datetime.now(timezone.utc)
             execution.error_message = str(e)
