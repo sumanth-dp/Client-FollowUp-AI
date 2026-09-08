@@ -134,3 +134,13 @@ class FollowUpExecution(Base):
         back_populates="executions",
     )
 
+    subject: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    body: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+

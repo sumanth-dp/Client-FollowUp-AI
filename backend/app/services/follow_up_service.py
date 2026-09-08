@@ -23,15 +23,15 @@
 #     result = db.scalars(statement)
 
 #     return list(result)
-
+from backend.app.schemas.follow_up import FollowUpFilterParams
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.models.follow_up import FollowUp
-
+from sqlalchemy import func, select
+from backend.app.models.client import Client
 # def get_due_follow_ups(db: Session) -> list[FollowUp]:
 #     now = datetime.now()
 
@@ -486,3 +486,128 @@ def claim_follow_up_for_queue(
     db.commit()
 
     return result.rowcount == 1
+
+
+
+
+from sqlalchemy import func, select
+
+
+def get_follow_up_stats(db: Session) -> dict:
+    total = db.scalar(
+        select(func.count()).select_from(FollowUp)
+    )
+
+    pending = db.scalar(
+        select(func.count())
+        .select_from(FollowUp)
+        .where(
+            FollowUp.status == "pending",
+            FollowUp.next_retry_at.is_(None),
+        )
+    )
+
+    retrying = db.scalar(
+        select(func.count())
+        .select_from(FollowUp)
+        .where(
+            FollowUp.status == "pending",
+            FollowUp.next_retry_at.is_not(None),
+        )
+    )
+
+    processing = db.scalar(
+        select(func.count())
+        .select_from(FollowUp)
+        .where(FollowUp.status == "processing")
+    )
+
+    completed = db.scalar(
+        select(func.count())
+        .select_from(FollowUp)
+        .where(FollowUp.status == "completed")
+    )
+
+    failed = db.scalar(
+        select(func.count())
+        .select_from(FollowUp)
+        .where(FollowUp.status == "failed")
+    )
+
+    return {
+        "total": total or 0,
+        "pending": pending or 0,
+        "processing": processing or 0,
+        "completed": completed or 0,
+        "failed": failed or 0,
+        "retrying": retrying or 0,
+    }
+
+def get_client_follow_up_stats(db: Session) -> list[dict]:
+    rows = db.execute(
+        select(
+            Client.id,
+            Client.name,
+            func.count(FollowUp.id).label("total"),
+            func.sum(
+                (FollowUp.status == "pending") &
+                (FollowUp.next_retry_at.is_(None))
+            ).label("pending"),
+            func.sum(
+                (FollowUp.status == "pending") &
+                (FollowUp.next_retry_at.is_not(None))
+            ).label("retrying"),
+            func.sum(
+                FollowUp.status == "processing"
+            ).label("processing"),
+            func.sum(
+                FollowUp.status == "completed"
+            ).label("completed"),
+            func.sum(
+                FollowUp.status == "failed"
+            ).label("failed"),
+        )
+        .outerjoin(FollowUp, FollowUp.client_id == Client.id)
+        .group_by(Client.id, Client.name)
+        .order_by(Client.id)
+    ).all()
+
+    return [
+        {
+            "client_id": row.id,
+            "client_name": row.name,
+            "total": row.total or 0,
+            "pending": row.pending or 0,
+            "processing": row.processing or 0,
+            "completed": row.completed or 0,
+            "failed": row.failed or 0,
+            "retrying": row.retrying or 0,
+        }
+        for row in rows
+    ]
+
+
+def list_follow_ups(
+    db: Session,
+    filters: FollowUpFilterParams,
+) -> list[FollowUp]:
+    statement = select(FollowUp)
+
+    if filters.status:
+        statement = statement.where(FollowUp.status == filters.status)
+
+    if filters.client_id:
+        statement = statement.where(FollowUp.client_id == filters.client_id)
+
+    if filters.priority:
+        statement = statement.where(FollowUp.priority == filters.priority)
+
+    statement = (
+        statement
+        .order_by(FollowUp.scheduled_at.asc())
+        .offset(filters.skip)
+        .limit(filters.limit)
+    )
+
+    result = db.execute(statement)
+    return list(result.scalars().all())

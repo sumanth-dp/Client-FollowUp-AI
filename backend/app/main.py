@@ -52,6 +52,7 @@ from fastapi import FastAPI
 
 from backend.app.api.clients import router as clients_router
 from backend.app.api.follow_ups import router as follow_ups_router
+from backend.app.api.auth import router as auth_router
 
 from backend.app.core.database import engine
 from sqlalchemy import text
@@ -64,6 +65,7 @@ app = FastAPI(
 
 app.include_router(clients_router)
 app.include_router(follow_ups_router)
+app.include_router(auth_router)
 
 @app.get("/")
 def root():

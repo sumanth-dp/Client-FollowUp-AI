@@ -11,7 +11,7 @@ from backend.app.models.client import Client
 from backend.app.models.follow_up import FollowUp
 from backend.app.models.follow_up_execution import FollowUpExecution
 
-
+from backend.app.models.user import User
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

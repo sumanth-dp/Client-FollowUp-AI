@@ -7,6 +7,14 @@ from backend.app.models.client import Client
 from backend.app.triggers.engine import execute_trigger
 from backend.app.models.follow_up_execution import FollowUpExecution
 from backend.app.agents.follow_up_agent import follow_up_agent
+from backend.app.core.constants import FOLLOW_UP_EXECUTION_STATUSES
+from backend.app.core.constants import EXECUTION_PROCESSING
+from backend.app.core.constants import (
+    EXECUTION_COMPLETED,
+    EXECUTION_FAILED,
+    EXECUTION_PROCESSING,
+)
+
 
 QUEUE_NAME = "follow_up_queue"
 
@@ -38,13 +46,13 @@ def process_job(job: dict):
         # Count this execution attempt
         follow_up.attempt_count += 1
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now()
 
         execution = FollowUpExecution(
             follow_up_id=follow_up.id,
             attempt_number=follow_up.attempt_count,
             channel=follow_up.type,
-            status="processing",
+            status=EXECUTION_PROCESSING,
             started_at=now,
             created_at=now,
         )
@@ -98,19 +106,24 @@ def process_job(job: dict):
             provider_reference = result.get("provider_reference")
             success = result.get("success", False)
             error = result.get("error")
+            email_subject = result.get("email_subject")
+            email_body = result.get("email_body")
             # if provider_reference:
             #     execution.provider_reference = provider_reference
 
             if success and provider_reference:
                 execution.provider_reference = provider_reference
                 follow_up.status = "completed"
-                follow_up.completed_at = datetime.now(timezone.utc)
+                follow_up.completed_at = datetime.now()
                 follow_up.last_error = None
                 follow_up.processing_started_at = None
+                follow_up.next_retry_at = None
 
-                execution.status = "completed"
-                execution.completed_at = datetime.now(timezone.utc)
+                execution.status = EXECUTION_COMPLETED
+                execution.completed_at = datetime.now()
                 execution.error_message = None
+                execution.subject = email_subject
+                execution.body = email_body
 
                 db.commit()
                 print(
@@ -126,15 +139,15 @@ def process_job(job: dict):
 
             #     db.commit()
 
-            raise Exception("Trigger returned failure")
+            raise Exception(error or "Follow-up agent failed")
 
         except Exception as e:
             follow_up.last_error = str(e)
             print(
                 f"[WORKER ERROR] {type(e).__name__}: {e}"
             )
-            execution.status = "failed"
-            execution.completed_at = datetime.now(timezone.utc)
+            execution.status = EXECUTION_FAILED
+            execution.completed_at = datetime.now()
             execution.error_message = str(e)
 
             if follow_up.attempt_count < follow_up.max_attempts:
@@ -145,9 +158,11 @@ def process_job(job: dict):
                 )
 
                 follow_up.next_retry_at = (
-                    datetime.now(timezone.utc)
+                    datetime.now()
                     + timedelta(seconds=retry_delay)
                 )
+
+                follow_up.processing_started_at = None
 
                 db.commit()
 
@@ -200,9 +215,9 @@ from sqlalchemy import or_
 
 from backend.app.models.follow_up import FollowUp
 
-
+"""
 def get_due_follow_ups(db):
-    now = datetime.now(timezone.utc)
+    now = datetime.now()
 
     return (
         db.query(FollowUp)
@@ -227,7 +242,7 @@ def get_due_follow_ups(db):
         .all()
     )
 
-
+"""
 
 
 if __name__ == "__main__":

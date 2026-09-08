@@ -73,14 +73,21 @@ def send_email(
         message.as_bytes()
     ).decode()
 
+    # result = service.users().messages().send(
+    #     userId="me",
+    #     body={
+    #         "raw": encoded_message,
+    #     },
+    # ).execute()
+
+    # return result["id"]
+
     result = service.users().messages().send(
         userId="me",
-        body={
-            "raw": encoded_message,
-        },
+        body={"raw": encoded_message},
     ).execute()
 
-    return result["id"]
+    return result
 
 
 
@@ -105,20 +112,32 @@ def send_email(
 
 
 
-@tool
-def send_follow_up_email(
-    to: str,
-    subject: str,
-    body: str,
-) -> str:
-    """
-    Send a client follow-up email using Gmail.
-    """
+# @tool
+# def send_follow_up_email(
+#     to: str,
+#     subject: str,
+#     body: str,
+# ) -> str:
+#     """
+#     Send a client follow-up email using Gmail.
+#     """
 
-    provider_reference = send_email(
+#     provider_reference = send_email(
+#         to=to,
+#         subject=subject,
+#         body=body,
+#     )
+
+#     return provider_reference
+
+@tool
+def send_follow_up_email(to: str, subject: str, body: str) -> str:
+    """Send a client follow-up email using Gmail."""
+
+    result = send_email(
         to=to,
         subject=subject,
         body=body,
     )
 
-    return provider_reference
+    return result["id"]

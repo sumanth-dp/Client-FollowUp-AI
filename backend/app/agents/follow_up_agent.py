@@ -192,13 +192,13 @@
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
-from langgraph.graph import StateGraph, START
+from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from backend.app.core.llm import llm
 from backend.app.tools.gmail_tool import send_follow_up_email
-
+from backend.app.schemas.ai_follow_up import FollowUpEmail
 class FollowUpState(TypedDict):
     follow_up_id: int
     client_name: str
@@ -226,7 +226,7 @@ tools = [
 
 llm_with_tools = llm.bind_tools(tools)
 
-
+email_generator = llm.with_structured_output(FollowUpEmail)
 def agent(state: FollowUpState):
     prompt = f"""
 You are an AI client follow-up assistant.
@@ -258,11 +258,9 @@ The email should be concise and professional.
         "messages": [response]
     }
 
-
 def record_result(state: FollowUpState):
     messages = state["messages"]
 
-    # Get the latest tool response
     tool_message = next(
         (
             message
@@ -275,15 +273,53 @@ def record_result(state: FollowUpState):
     if tool_message is None:
         return {
             "success": False,
+            "provider_reference": None,
             "error": "No tool response found",
         }
 
+    if tool_message.status == "error":
+        return {
+            "success": False,
+            "provider_reference": None,
+            "error": str(tool_message.content),
+        }
+
     return {
-        "provider_reference": tool_message.content,
+        "provider_reference": str(tool_message.content),
         "success": True,
         "error": None,
     }
 
+
+
+
+
+def generate_email(state: FollowUpState):
+    prompt = f"""
+    You are an AI assistant that writes professional client follow-up emails.
+
+    Client Name:
+    {state["client_name"]}
+
+    Follow-up Notes:
+    {state["notes"]}
+
+    Purpose:
+    {state["purpose"]}
+
+    Generate:
+    1. A concise email subject.
+    2. A professional email body.
+
+    Do not include placeholders.
+    """
+
+    email = email_generator.invoke(prompt)
+
+    return {
+        "email_subject": email.subject,
+        "email_body": email.body,
+    }
 
 graph_builder = StateGraph(FollowUpState)
 
@@ -302,10 +338,16 @@ graph_builder.add_node(
     record_result,
 )
 
-graph_builder.add_edge(
-    START,
-    "agent",
-)
+graph_builder.add_node("generate_email", generate_email)
+
+
+
+
+
+
+
+graph_builder.add_edge(START, "generate_email")
+graph_builder.add_edge("generate_email", "agent")
 
 graph_builder.add_conditional_edges(
     "agent",
@@ -322,4 +364,14 @@ graph_builder.add_edge(
     "record_result",
     "__end__",
 )
+
+# graph_builder.add_edge(START, "generate_email")
+# graph_builder.add_edge("generate_email", "agent")
+# graph_builder.add_edge("agent", "record_result")
+# graph_builder.add_edge("record_result", END)
+
+
+
 follow_up_agent = graph_builder.compile()
+
+

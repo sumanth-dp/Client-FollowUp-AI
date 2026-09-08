@@ -28,3 +28,11 @@ langchain-google-genai
 python-dotenv
 
 langchain-groq
+
+pytest
+
+
+pyjwt
+pwdlib 
+pwdlib[argon2]
+python-multipart
